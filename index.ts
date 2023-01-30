@@ -10,7 +10,7 @@ export interface LoggerConfigOptions {
 }
 
 export interface WinstonLoggerOptions extends LoggerConfigOptions {
-    format?: Array<Format> | Format,
+    format?: Array<Format>,
     label?: string
     maxsize: number,
 }
@@ -19,6 +19,7 @@ export interface LoggerService {
     http: Logger
     app: Logger
 }
+
 
 //Abstract Logger class
 abstract class Logger {
@@ -47,7 +48,7 @@ abstract class Logger {
 }
 
 //Logger implementation using Winston
-class WinstonLogger extends Logger {
+export class WinstonLogger extends Logger {
     logger: WinstonLoggerType
     errorLogger: WinstonLoggerType
     debugLogger: WinstonLoggerType
@@ -55,7 +56,7 @@ class WinstonLogger extends Logger {
     constructor(config: any) {
         super(config)
 
-        const infoFormat = format.combine(format.label({label: config.label}), ...config.format)
+        const infoFormat = format.combine(format.label({label: config.label}), format.timestamp(), ...config.format)
         this.logger = createLogger({
             format: infoFormat,
             levels: this.levels,
@@ -66,7 +67,7 @@ class WinstonLogger extends Logger {
             })]
         })
 
-        const errFormat = format.combine(format.label({label: config.label + '-ERROR'}), format.errors({stack: true}), ...config.format)
+        const errFormat = format.combine(format.label({label: config.label + '-ERROR'}), format.timestamp(), ...config.format)
         this.errorLogger = createLogger({
             format: errFormat,
             levels: this.levels,
@@ -77,7 +78,7 @@ class WinstonLogger extends Logger {
             })]
         })
 
-        const debugFormat = format.combine(format.label({label: 'DEBUG'}), format.errors({stack: true}), ...config.format)
+        const debugFormat = format.combine(format.label({label: 'DEBUG'}), format.errors({stack: true}), format.timestamp(), ...config.format)
         this.debugLogger = createLogger({
             format: debugFormat,
             levels: this.levels,
@@ -99,19 +100,20 @@ class WinstonLogger extends Logger {
 
     info(message: string, metadata?: any, level: string = 'info') {
         if (this.levels[level] <= this.levels['info']) {
-            this.logger.log(level, message, metadata)
+            this.logger.log({level, message, metadata})
         }
     }
 
-    error(message: string, metadata?: any, level: string = 'error') {
+    error(message: any, metadata?: any, level: string = 'error') {
         if (this.levels[level] <= this.levels['error']) {
-            this.errorLogger.log(level, message, metadata)
+            const err: string = message.stack || message
+            this.errorLogger.log({level, message: err, metadata})
         }
     }
 
     debug(message: string, metadata?: any, level: string = 'debug') {
         if (this.levels[level] <= this.levels['debug']) {
-            this.errorLogger.log(level, message, metadata)
+            this.errorLogger.log({level, message, metadata})
         }
     }
 
@@ -119,9 +121,9 @@ class WinstonLogger extends Logger {
 
 //
 const defaultStringFormat = format.printf((info) => {
-    const {label, status, stack, metadata, message, timestamp} = info
-    const stack_ = stack || metadata?.stack
-    return (`[${label}] - ${timestamp || ''} - ${status || ''} - ${message} : ${metadata ? JSON.stringify(metadata) + (stack_ ? "\n" + stack_ : "") : ''}`)
+    const {label, metadata, message, timestamp} = info
+    const status = metadata?.status
+    return (`[${label}] - ${timestamp || ''} - ${status || ''} - ${message} : ${metadata ? JSON.stringify(metadata) : ''}`)
 })
 
 //Logger service that provides various Logger instances with different labels and logging directories for different needs : http , app ...
@@ -131,12 +133,12 @@ export class WinstonLoggerService implements LoggerService {
 
     constructor(config: WinstonLoggerOptions) {
         this.http = new WinstonLogger({
-            format: defaultStringFormat,
+            format: [defaultStringFormat],
             label: 'HTTP',
             ...config,
         })
         this.app = new WinstonLogger({
-            format: defaultStringFormat,
+            format: [defaultStringFormat],
             label: 'APP',
             ...config,
         })
