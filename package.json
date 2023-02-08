@@ -1,6 +1,6 @@
 {
   "name": "mein-winston-logger",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "util winston logger package",
   "type": "module",
   "main": "dist/index.js",
