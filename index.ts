@@ -4,7 +4,7 @@ import {Format} from "logform";
 //Interfaces
 export interface LoggerConfigOptions {
     //path to log directory
-    path: string,
+    path?: string,
     //log to console or not
     console?: boolean,
 }
@@ -60,22 +60,12 @@ export class WinstonLogger extends Logger {
         this.logger = createLogger({
             format: infoFormat,
             levels: this.levels,
-            transports: [new transports.File({
-                filename: this.config.path + "/combined.log",
-                level: 'info',
-                maxsize: config.maxsize,
-            })]
         })
 
         const errFormat = format.combine(format.label({label: config.label + '-ERROR'}), format.timestamp(), ...config.format)
         this.errorLogger = createLogger({
             format: errFormat,
             levels: this.levels,
-            transports: [new transports.File({
-                filename: this.config.path + "/error.log",
-                level: 'error',
-                maxsize: config.maxsize,
-            })]
         })
 
         const debugFormat = format.combine(format.label({label: 'DEBUG'}), format.errors({stack: true}), format.timestamp(), ...config.format)
@@ -96,6 +86,18 @@ export class WinstonLogger extends Logger {
                 format: errFormat
             }))
         }
+        if (this.config.path) {
+            this.logger.add(new transports.File({
+                filename: this.config.path + "/combined.log",
+                level: 'info',
+                maxsize: config.maxsize,
+            }))
+            this.errorLogger.add(new transports.File({
+                filename: this.config.path + "/error.log",
+                level: 'error',
+                maxsize: config.maxsize,
+            }))
+        }
     }
 
     info(message: string, metadata?: any, level: string = 'info') {
@@ -106,7 +108,7 @@ export class WinstonLogger extends Logger {
 
     error(message: any, metadata?: any, level: string = 'error') {
         if (this.levels[level] <= this.levels['error']) {
-            const err: string = message.stack || message
+            const err: string = message?.stack ? message.stack : message
             this.errorLogger.log({level, message: err, metadata})
         }
     }
