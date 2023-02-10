@@ -115,7 +115,7 @@ export class WinstonLogger extends Logger {
 
     debug(message: string, metadata?: any, level: string = 'debug') {
         if (this.levels[level] <= this.levels['debug']) {
-            this.errorLogger.log({level, message, metadata})
+            this.debugLogger.log({level, message, metadata})
         }
     }
 
@@ -125,6 +125,7 @@ export class WinstonLogger extends Logger {
 const defaultStringFormat = format.printf((info) => {
     const {label, metadata, message, timestamp} = info
     const status = metadata?.status
+    delete metadata?.status
     return (`[${label}] - ${timestamp || ''} - ${status || ''} - ${message} : ${metadata ? JSON.stringify(metadata) : ''}`)
 })
 
